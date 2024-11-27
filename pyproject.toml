@@ -1,0 +1,20 @@
+[project]
+authors = [
+    {name = "Lennon Cook", email = "lvc@codetripping.net"},
+]
+requires-python = ">=3.12"
+dependencies = [
+    "advent-of-code-data",
+    "more-itertools",
+    "parse",
+    "numpy>=1.21",
+    "networkx>=2.8.8",
+    "portion>=2.4.1",
+    "sympy>=1.12",
+    "aocd-example-parser>=2023.12.20",
+    "rich>=13.9.4",
+    "pytest>=8.3.3",
+]
+# name = "advent of python"
+description = "My solutions to Advent of Code 2024, in python"
+license="MIT"
