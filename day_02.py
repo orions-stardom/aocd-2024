@@ -14,12 +14,9 @@ def part_1(rawdata):
     data = parse(rawdata)
     return str(sum(is_safe(report) for report in data))
 
-def is_safe_dampened(report):
-    return is_safe(report) or any(is_safe(report[:i]+report[i+1:]) for i in range(len(report)))
-
 def part_2(rawdata):
     data = parse(rawdata)
-    return str(sum(is_safe_dampened(report) for report in data))
+    return str(sum(is_safe(report) or any(is_safe(damped) for damped in it.combinations(report, len(report)-1)) for report in data))
 
 from aocd import puzzle, submit
 import pytest
