@@ -26,7 +26,7 @@ class Grid:
         """
         return 0 <= coord.real < self.width and 0 <= coord.imag < self.height
 
-    def steps_till_offgrid(self) -> int:
+    def steps_till_offgrid(self) -> set[complex]:
         seen_positions = set()
         seen_states = set()
         here = self.guard_start
@@ -39,7 +39,7 @@ class Grid:
 
             test = here + direction
             if test not in self:
-                return len(seen_positions)
+                return seen_positions
             if test in self.obstacles:
                 direction = direction * -1j 
                 continue
@@ -70,11 +70,12 @@ class Grid:
 
 def part_1(rawdata):
     grid = Grid(rawdata)
-    return str(grid.steps_till_offgrid())
+    return str(len(grid.steps_till_offgrid()))
 
 def part_2(rawdata):
     grid = Grid(rawdata)
-    candidates = set(grid.passable_coordinates)
+    # candidates = set(grid.passable_coordinates)
+    candidates = grid.steps_till_offgrid()
     candidates.discard(grid.guard_start)
     return str(sum(grid.with_extra_obstacle_at(cand).has_loop for cand in candidates))
 
