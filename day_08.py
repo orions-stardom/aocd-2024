@@ -45,18 +45,14 @@ def part_1(rawdata):
 def part_2(rawdata):
     grid = Grid.parse(rawdata)
 
-    antinodes = 0
-    for c in grid:
-        pairs = it.chain.from_iterable(it.combinations(l,2) for l in grid.antennae.values())
+    def colinear(a,b,c):
+        x1, y1 = b.real - a.real, b.imag - a.imag
+        x2, y2 = c.real - a.real, c.imag - a.imag
+        return math.isclose(abs(x1 * y2 - x2 * y1), 0)
 
-        for a,b in pairs:
-            x1, y1 = b.real - a.real, b.imag - a.imag
-            x2, y2 = c.real - a.real, c.imag - a.imag
-            if math.isclose(abs(x1 * y2 - x2 * y1), 0):
-                antinodes += 1
-                break
-
-    return str(antinodes)
+    pairs = list(it.chain.from_iterable(it.combinations(l,2) for l in grid.antennae.values()))
+    antinodes = [c for c in grid if any(colinear(a,b,c) for a,b in pairs)]
+    return str(len(antinodes))
 
 from aocd import puzzle, submit
 import pytest
