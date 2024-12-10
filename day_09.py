@@ -2,79 +2,86 @@
 from dataclasses import dataclass
 import itertools as it
 import more_itertools as mit
-from functools import total_ordering
 
-@total_ordering
 @dataclass
-class File:
-    file_id: int
-    start_block: int
+class Fragment:
+    file_id: int|None
+    start: int
     size: int
-    space_after: int
 
     @property
     def checksum(self):
-        return sum(self.file_id * block for block in range(self.start_block, self.start_block+self.size))
+        if self.is_free:
+            return 0
 
-    def shrink_by(self, amount):
-        self.size -= amount
-        self.space_after += amount
+        return sum(self.file_id * block for block in range(self.start, self.start+self.size))
 
-    def __lt__(self, other):
-        return self.start_block < other.start_block
+    @property
+    def is_free(self):
+        return self.file_id is None
 
-    def __eq__(self, other):
-        return self.start_block == other.start_block
+    def __str__(self):
+        return ("." if self.is_free else str(self.file_id)) * self.size
 
-def parse(rawdata):
-    files = [] 
-    block = 0
-    file_id = 0
+class Filesystem:
+    def __init__(self, rawdata):
+        self.fragments = []
+        block = 0
+        
+        ids = mit.interleave(it.count(), it.cycle([None]))
+        for size, file_id  in zip(map(int,rawdata), ids):
+            self.fragments.append( Fragment(file_id, block, size) )
+            block += size 
 
-    data = [int(x) for x in rawdata]
-    if len(data) % 2:
-        # the last entry must be a file with no space after
-        data.append(0)
+    def __str__(self):
+        return "".join(str(f) for f in sorted(self.fragments, key=lambda f: f.start))
 
-    for file_id, (filesize, freesize) in enumerate(it.batched(data,2)):
-        files.append( File(file_id, block, filesize, freesize) )
-        block += filesize + freesize
-    return files
+    @property
+    def files(self):
+        return (f for f in self.fragments if not f.is_free and f.size > 0)
+
+    def free_space(self, *, before, min_size=1):
+        return (f for f in self.fragments if f.is_free and f.size >= min_size and f.start < before)
+
+    @property
+    def checksum(self):
+        return sum(f.checksum for f in self.fragments)
 
 def part_1(rawdata):
-    files = parse(rawdata)
+    fs = Filesystem(rawdata)
 
-    while mit.ilen(f for f in files if f.space_after) > 1:
-        to_move = max(files) 
-        after = min(f for f in files if f.space_after)
+    for file in mit.always_reversible(fs.files):
+        while file.size:
+            try:
+                target = mit.first(fs.free_space(before=file.start))
+            except ValueError:
+                break
 
-        new_start = after.start_block + after.size
-        if after.space_after > to_move.size:
-            to_move.start_block, to_move.space_after, after.space_after = new_start, \
-                                                                          after.space_after - to_move.size, \
-                                                                          0
-        else:
-            # split the file in two
-            files.append(File(to_move.file_id, new_start, after.space_after, 0))
-            to_move.shrink_by(after.space_after)
-            after.space_after = 0
+            if target.size < file.size:
+                target.file_id = file.file_id
+                file.size -= target.size
+            else:
+                file.start, target.start, target.size = target.start,\
+                                                        target.start+file.size,\
+                                                        target.size - file.size
 
-    return str(sum(f.checksum for f in files))
+    return str(fs.checksum)
 
 def part_2(rawdata):
-    files = parse(rawdata)
+    fs = Filesystem(rawdata)
 
-    for to_move in reversed(files):
+    for file in mit.always_reversible(fs.files):
         try:
-            after = min(f for f in files if f.start_block < to_move.start_block and f.space_after >= to_move.size)
+            target = mit.first(fs.free_space(before=file.start, min_size=file.size))
         except ValueError:
             continue
 
-        to_move.start_block = after.start_block + after.size
-        to_move.space_after = after.space_after - to_move.size
-        after.space_after = 0
+        file.start, target.start, target.size = target.start,\
+                                                target.start+file.size,\
+                                                target.size - file.size
 
-    return str(sum(f.checksum for f in files))
+
+    return str(fs.checksum)
 
 from aocd import puzzle, submit
 import pytest
