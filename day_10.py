@@ -1,69 +1,39 @@
 #!/usr/bin/env python
-from collections import deque
+from collections import deque, Counter
 
-class Topograph:
-    def __init__(self, rawdata):
-        self.map = {}
-        self.trailheads = set()
+def count_trails(rawdata):
+    grid = {}
+    to_visit = deque([])
 
-        data = rawdata.splitlines()[::-1]
-        self.height, self.width = len(data), len(data[0])
-        for y, line in enumerate(data):
-            for x, char in enumerate(line):
-                height = int(char)
-                point = complex(x,y)
-                self.map[point] = height
-                if not height:
-                    self.trailheads.add(point)
+    data = rawdata.splitlines()[::-1]
+    height, width = len(data), len(data[0])
+    for y, line in enumerate(data):
+        for x, char in enumerate(line):
+            point = complex(x,y)
+            grid[point] = height = int(char)
+            if not height:
+                to_visit.append((point,point))
 
-    def reachable_peaks(self, trailhead):
-        directions = [1j,-1j,1,-1]
-        peaks_reached = set()
-        visited = set()
-        to_visit = deque([trailhead])
-        while to_visit:
-            here = to_visit.popleft()
-            if here in visited or here in peaks_reached:
+    trails = Counter()
+    while to_visit:
+        head, here = to_visit.popleft()
+        if grid[here] == 9:
+            trails[(head, here)] += 1
+
+        for d in [1j,-1j,1,-1]:
+            there = here+d
+            if there not in grid:
                 continue
-            if self.map[here] == 9:
-                peaks_reached.add(here)
-                continue
+            if grid[there] - grid[here] == 1:
+                to_visit.append((head,there))
 
-            for d in directions:
-                there = here+d
-                if there not in self.map:
-                    continue
-                if self.map[there] - self.map[here] == 1:
-                    to_visit.append(there)
-
-        return peaks_reached
-
-    def all_trails(self, trailhead):
-        directions = [1j,-1j,1,-1]
-        found_trails = set()
-        to_visit = deque([(trailhead,)])
-
-        while to_visit:
-            trail_so_far = to_visit.popleft()
-            here = trail_so_far[-1]
-            if self.map[here] == 9:
-                found_trails.add(trail_so_far)
-
-            for d in directions:
-                there = here+d
-                if there not in self.map:
-                    continue
-                if self.map[there] - self.map[here] == 1:
-                    to_visit.append(trail_so_far + (there,))
-        return found_trails
+    return trails
 
 def part_1(rawdata):
-    topo = Topograph(rawdata)
-    return str(sum(len(topo.reachable_peaks(p)) for p in topo.trailheads))
+    return str(len(count_trails(rawdata)))
 
 def part_2(rawdata):
-    topo = Topograph(rawdata)
-    return str(sum(len(topo.all_trails(p)) for p in topo.trailheads))
+    return str(count_trails(rawdata).total())
 
 from aocd import puzzle, submit
 import pytest
