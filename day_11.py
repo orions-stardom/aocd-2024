@@ -1,19 +1,13 @@
 #!/usr/bin/env python
 from collections import Counter
-
-def digits(n):
-    res = 0
-    while n:
-        res += 1
-        n //= 10
-    return res
+from math import log10
 
 def transform(stones):
     new_stones = Counter()
     for stone, count in stones.items():
         if stone == 0:
             new_stones[1] += count
-        elif not (d := digits(stone)) % 2:
+        elif not (d := int(log10(stone) + 1)) % 2:
             a,b = divmod(stone,10**(d//2))
             new_stones[a] += count
             new_stones[b] += count

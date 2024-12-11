@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import operator
 from dataclasses import dataclass
+from math import log10
 
 @dataclass
 class Equation:
@@ -30,15 +31,8 @@ def part_1(rawdata):
 def part_2(rawdata):
     data = [Equation.parse(line) for line in rawdata.splitlines()]
 
-    def digits(n):
-        res = 0
-        while n:
-            res += 1
-            n //= 10
-        return res
-
     def cat(a,b):
-        return a*(10**digits(b)) + b
+        return a*(10**int(log10(b)+1)) + b
 
     return str(sum(eq.target for eq in data if eq.can_calculate([operator.add, operator.mul, cat]))) 
 
