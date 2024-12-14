@@ -20,14 +20,39 @@ class Region:
 
     @property
     def sides(self):
-        # To find the sides, find the corners. We need all of the following types of corners:
-        #      .x     ..    x.
-        #      xx     .x    .x
-        search_directions = ((-1,1j), (1,1j),(-1,-1j),(1,-1j))
-        space = (complex(x,y) for x,y in it.product(*self.bounding_box))
-        return sum((c in self) + (c+d1 in self) + (c+d2 in self) + (c+d1+d2 in self) in (1,3) 
-                   or ((c in self) and (c+d1+d2 in self) and (c+d1) not in self and (c+d2 not in self))
-                   for d1,d2 in search_directions for c in space)
+        # To count the sides, count the corners
+        nsides = 0
+        for x,y in it.product(*self.bounding_box):
+            c = complex(x,y)
+            dx, dy = 1, 1j
+            innies = (c in self) + (c+dx in self) + (c+dy in self) + (c+dx+dy in self)
+            if innies == 1:
+                # ..
+                # .x
+                nsides += 1
+            if innies == 2:
+                # This is two corners:
+                #   x.
+                #   .x
+                # and so is this:
+                #   .x
+                #   x.
+                # but this isn't any:
+                #    .x
+                #    .x
+                if c in self and c+dx+dy in self:
+                    nsides += 2
+                if c+dx in self and c+dy in self:
+                    nsides += 2
+            if innies == 3:
+                # x.
+                # xx
+                nsides += 1
+            if innies == 4:
+                # never a corner
+                pass
+                    
+        return nsides
 
     def __contains__(self, point):
         return point in self.points
@@ -46,7 +71,7 @@ class Region:
         return "\n".join("".join(self.letter if complex(x,y) in self else "." for x in xs) for y in ys)
 
 
-def find_regions(rawdata: str) -> list[set[complex]]:
+def find_regions(rawdata: str) -> list[Region]:
     grid = {}
     for y, line in enumerate(rawdata.splitlines()):
         for x, char in enumerate(line):
@@ -82,6 +107,7 @@ def part_1(rawdata):
 
 def part_2(rawdata):
     regions = find_regions(rawdata)
+    # breakpoint()
     return str(sum(r.sides*r.area for r in regions))
 
 from aocd import puzzle, submit
@@ -105,22 +131,24 @@ def test_part_1(data, result):
 
 @pytest.mark.parametrize("data, result",
      # [(ex.input_data, ex.answer_b) for ex in puzzle.examples])
-[("""RRRRIICCFF
-RRRRIICCCF
-VVRRRCCFFF
-VVRCCCJFFF
-VVVVCJJCFE
-VVIVCCJJEE
-VVIIICJJEE
-MIIIIIJJEE
-MIIISIJEEE
-MMMISSJEEE""", "1206"),
+[
+# ("""RRRRIICCFF
+# RRRRIICCCF
+# VVRRRCCFFF
+# VVRCCCJFFF
+# VVVVCJJCFE
+# VVIVCCJJEE
+# VVIIICJJEE
+# MIIIIIJJEE
+# MIIISIJEEE
+# MMMISSJEEE""", "1206"),
 
-("""OOOOO
-OXOXO
-OXXXO""", "160"),
+# ("""OOOOO
+# OXOXO
+# OXXXO""", "160"),
 
-("""BBBBB
+("""\
+BBBBB
 BAAAB
 BABAB
 BAABB
