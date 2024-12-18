@@ -43,16 +43,16 @@ def part_1(rawdata):
 
 def part_2(rawdata):
     program, _, _, _ = parse(rawdata)
-    # The program is a single loop that outputs one octal digit for each in
-    # the register, starting from the least significant end. Each iteration depends on 
-    # the digit under consideration, and the entire amount of number that hasn't been processed
-    # yet. Meaning the first output value must depend only on the most significant octal digit of the output
-    # So we can find all the candidates for that and DFS for the remaining digits
+    # The program is a single loop that succesively divides the input number by 8,
+    # and outputting one octal digit per iteration that depends on the current
+    # quotient and remainder, stopping when the register value gets to 0. So the 
+    # last output digit must depend only on the LSD of the input (leaving behind a 0 quotient).
+    # So we can solve for that, and iteratively use that to solve for the next-least significant, etc
     check = [(len(program)-1, 0)]
     for position, solution_so_far in check:
-        for candidate in range(solution_so_far*8, solution_so_far*8+8):
+        for candidate in range(8):
             need = ",".join(str(c) for c in program[position:])
-            got = run_program(program, candidate, 0, 0)
+            got = run_program(program, solution_so_far*8 + candidate, 0, 0)
             if need == got:
                 if position == 0:
                     return candidate
