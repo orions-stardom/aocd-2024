@@ -21,6 +21,27 @@ for column in "v^", ">A":
     dpad.add_edges_from(it.pairwise(column), direction="^")
     dpad.add_edges_from(it.pairwise(column[::-1]), direction="v")
 
+def path_as_directions(keypad, path):
+    return (keypad.edges[edge]["direction"] for edge in it.pairwise(path))
+
+@cache
+def least_cost(s,d,robots):
+    # number of keystrokes on one dpad to move a robot
+    # from s to d on its own dpad
+    if robots == 1:
+        return nx.shortest_path_length(dpad, s, d) + 1
+
+    # if there's more than one robot, then we need to think about 
+    # all the paths
+    possible_paths = [path_as_directions(dpad, path) for path in nx.all_shortest_paths(dpad, s, d)]
+    costs = [sum(least_cost(a,b,robots-1) for a,b in it.pairwise(path)) for path in possible_paths]
+    return min(costs)+1
+
+@cache
+def least_cost_numpad(s,d,robots):
+    possible_paths = [path_as_directions(numpad, path) for path in nx.all_shortest_paths(numpad, s, d)]
+    costs = [sum(least_cost(a,b,robots) for a,b in it.pairwise(path)) for path in possible_paths]
+    return min(costs)
 
 @cache
 def best_indirect_path_length(from_key, to_key, layers_of_indirection):
@@ -45,7 +66,8 @@ def best_indirect_path_length(from_key, to_key, layers_of_indirection):
     return cutoff
 
 def complexity(code, layers_of_indirection):
-    size = sum(best_indirect_path_length(a,b, layers_of_indirection) for a,b in it.pairwise("A"+code))
+    # size = sum(best_indirect_path_length(a,b, layers_of_indirection) for a,b in it.pairwise("A"+code))
+    size = sum(least_cost_numpad(a,b, layers_of_indirection) for a,b in it.pairwise("A"+code))
     return size * int(code[:-1])
 
 def part_1(rawdata):
