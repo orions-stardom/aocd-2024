@@ -3,17 +3,11 @@ import networkx as nx
 import itertools as it
 
 def part_1(rawdata):
-    network = nx.Graph()
-    network.add_edges_from(line.split("-") for line in rawdata.splitlines())
-    
-    def all_connected(n1, n2, n3):
-        return network.has_edge(n1,n2) and network.has_edge(n1, n3) and network.has_edge(n2,n3)
-
-    return sum(any(n.startswith("t") for n in nodes) and all_connected(*nodes) for nodes in it.combinations(network.nodes,3))
+    network = nx.Graph(line.split("-") for line in rawdata.splitlines())
+    return sum(len(clique)==3 and any(node.startswith("t") for node in clique) for clique in nx.enumerate_all_cliques(network))
 
 def part_2(rawdata):
-    network = nx.Graph()
-    network.add_edges_from(line.split("-") for line in rawdata.splitlines())
+    network = nx.Graph(line.split("-") for line in rawdata.splitlines())
     return ",".join(sorted(max(nx.find_cliques(network), key=len)))
 
 from aocd import puzzle, submit
