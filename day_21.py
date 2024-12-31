@@ -1,80 +1,57 @@
 #!/usr/bin/env python
 import networkx as nx
 import itertools as it
-from functools import cache
 
-numpad = nx.DiGraph()
+def complexity_calculator(robots):
+    numpad = nx.DiGraph()
 
-for row in "0A", "123", "456", "789":
-    numpad.add_edges_from(it.pairwise(row), direction=">") 
-    numpad.add_edges_from(it.pairwise(row[::-1]), direction="<")
+    for row in "0A", "123", "456", "789":
+        numpad.add_edges_from(it.pairwise(row), direction=">") 
+        numpad.add_edges_from(it.pairwise(row[::-1]), direction="<")
 
-for column in "147", "0258", "A369":
-    numpad.add_edges_from(it.pairwise(column), direction="^")
-    numpad.add_edges_from(it.pairwise(column[::-1]), direction="v")
+    for column in "147", "0258", "A369":
+        numpad.add_edges_from(it.pairwise(column), direction="^")
+        numpad.add_edges_from(it.pairwise(column[::-1]), direction="v")
 
-dpad = nx.DiGraph()
-for row in "^A", "<v>":
-    dpad.add_edges_from(it.pairwise(row), direction=">") 
-    dpad.add_edges_from(it.pairwise(row[::-1]), direction="<")
-for column in "v^", ">A":
-    dpad.add_edges_from(it.pairwise(column), direction="^")
-    dpad.add_edges_from(it.pairwise(column[::-1]), direction="v")
+    dpad = nx.DiGraph()
+    for row in "^A", "<v>":
+        dpad.add_edges_from(it.pairwise(row), direction=">") 
+        dpad.add_edges_from(it.pairwise(row[::-1]), direction="<")
+    for column in "v^", ">A":
+        dpad.add_edges_from(it.pairwise(column), direction="^")
+        dpad.add_edges_from(it.pairwise(column[::-1]), direction="v")
+        dpad_complete = nx.DiGraph()
 
-def path_as_directions(keypad, path):
-    return (keypad.edges[edge]["direction"] for edge in it.pairwise(path))
+    for d1,d2 in it.product(dpad,repeat=2):
+        dpad_complete.add_edge(d1, d2, weight_1=nx.shortest_path_length(dpad, d1, d2) + 1)
 
-@cache
-def least_cost(s,d,robots):
-    # number of keystrokes on one dpad to move a robot
-    # from s to d on its own dpad
-    if robots == 1:
-        return nx.shortest_path_length(dpad, s, d) + 1
+    for n in range(2, robots+1):
+        for d1,d2 in it.product(dpad,repeat=2):
+            if d1==d2:
+                dpad_complete[d1][d2][f"weight_{n}"] = 1
+            else:
+                dpad_complete[d1][d2][f"weight_{n}"] = min(nx.path_weight(dpad_complete,["A"]+p, weight=f"weight_{n-1}") for p in nx.all_shortest_paths(dpad, d1,d2))+1
+    
+    numpad_complete = nx.DiGraph()
+    for n1, n2 in it.product(numpad, repeat=2):
+        if n1 == n2:
+            weight = 1
+        else:
+            # find the possible ways to get from here to there as dpad instructions
+            possible_paths = [[numpad[a][b]["direction"] for a,b in it.pairwise(path)] for path in nx.all_shortest_paths(numpad, n1, n2)] 
+            weight = min(nx.path_weight(dpad_complete, ["A"]+p, weight=f"weight_{robots}") for p in possible_paths)+1
 
-    # if there's more than one robot, then we need to think about 
-    # all the paths
-    possible_paths = [path_as_directions(dpad, path) for path in nx.all_shortest_paths(dpad, s, d)]
-    costs = [sum(least_cost(a,b,robots-1) for a,b in it.pairwise(path)) for path in possible_paths]
-    return min(costs)+1
+        numpad_complete.add_edge(n1, n2, weight=weight)
 
-@cache
-def least_cost_numpad(s,d,robots):
-    possible_paths = [path_as_directions(numpad, path) for path in nx.all_shortest_paths(numpad, s, d)]
-    costs = [sum(least_cost(a,b,robots) for a,b in it.pairwise(path)) for path in possible_paths]
-    return min(costs)
-
-@cache
-def best_indirect_path_length(from_key, to_key, layers_of_indirection):
-    candidates = ["".join(numpad.edges[edge]["direction"] for edge in it.pairwise(path))+"A" for path in nx.all_shortest_paths(numpad, from_key, to_key) ]
-    for _ in range(layers_of_indirection-1):
-        next_indirect_candidates = []
-        for candidate in candidates:
-            parts = []
-            for here,there in it.pairwise("A"+candidate):
-                paths = list(nx.all_shortest_paths(dpad, here, there))
-                indirect_codes  = ["".join(dpad.edges[edge]["direction"] for edge in it.pairwise(path))+"A" for path in paths ]
-                parts.append(indirect_codes)
-
-            new_candidates = parts[0]
-            for part in parts[1:]:
-                new_candidates = [a+b for a in new_candidates for b in part]
-
-            next_indirect_candidates.extend(new_candidates)
-
-        cutoff = min(len(c) for c in next_indirect_candidates)
-        candidates = [c for c in next_indirect_candidates if len(c) == cutoff]
-    return cutoff
-
-def complexity(code, layers_of_indirection):
-    # size = sum(best_indirect_path_length(a,b, layers_of_indirection) for a,b in it.pairwise("A"+code))
-    size = sum(least_cost_numpad(a,b, layers_of_indirection) for a,b in it.pairwise("A"+code))
-    return size * int(code[:-1])
+    return lambda code: nx.path_weight(numpad_complete, f"A{code}", weight="weight") * int(code.removesuffix("A"))
 
 def part_1(rawdata):
-    return sum(complexity(code, 3) for code in rawdata.splitlines())
+    complexity = complexity_calculator(3)
+    return sum(complexity(code) for code in rawdata.splitlines())
 
 def part_2(rawdata):
-    return sum(complexity(code, 26) for code in rawdata.splitlines())
+    complexity = complexity_calculator(26)
+    return sum(complexity(code) for code in rawdata.splitlines())
 
 from aocd import puzzle, submit
 import pytest
