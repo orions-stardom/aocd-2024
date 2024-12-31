@@ -20,17 +20,19 @@ def complexity_calculator(robots):
     for column in "v^", ">A":
         dpad.add_edges_from(it.pairwise(column), direction="^")
         dpad.add_edges_from(it.pairwise(column[::-1]), direction="v")
-        dpad_complete = nx.DiGraph()
+
+    dpad_complete = nx.DiGraph()
 
     for d1,d2 in it.product(dpad,repeat=2):
         dpad_complete.add_edge(d1, d2, weight_1=nx.shortest_path_length(dpad, d1, d2) + 1)
 
-    for n in range(2, robots+1):
+    for n in range(2, robots):
         for d1,d2 in it.product(dpad,repeat=2):
             if d1==d2:
                 dpad_complete[d1][d2][f"weight_{n}"] = 1
             else:
-                dpad_complete[d1][d2][f"weight_{n}"] = min(nx.path_weight(dpad_complete,["A"]+p, weight=f"weight_{n-1}") for p in nx.all_shortest_paths(dpad, d1,d2))+1
+                possible_paths = [[dpad[a][b]["direction"] for a,b in it.pairwise(p)] for p in nx.all_shortest_paths(dpad, d1,d2)]
+                dpad_complete[d1][d2][f"weight_{n}"] = min(nx.path_weight(dpad_complete, ["A"]+p+["A"], f"weight_{n-1}") for p in possible_paths)
     
     numpad_complete = nx.DiGraph()
     for n1, n2 in it.product(numpad, repeat=2):
@@ -39,7 +41,7 @@ def complexity_calculator(robots):
         else:
             # find the possible ways to get from here to there as dpad instructions
             possible_paths = [[numpad[a][b]["direction"] for a,b in it.pairwise(path)] for path in nx.all_shortest_paths(numpad, n1, n2)] 
-            weight = min(nx.path_weight(dpad_complete, ["A"]+p, weight=f"weight_{robots}") for p in possible_paths)+1
+            weight = min(nx.path_weight(dpad_complete, ["A"]+p+["A"], weight=f"weight_{robots-1}") for p in possible_paths)
 
         numpad_complete.add_edge(n1, n2, weight=weight)
 
